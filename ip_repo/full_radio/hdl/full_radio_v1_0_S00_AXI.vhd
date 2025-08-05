@@ -126,9 +126,76 @@ COMPONENT dds_compiler_0
     s_axis_phase_tvalid : IN STD_LOGIC;
     s_axis_phase_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
     m_axis_data_tvalid : OUT STD_LOGIC;
+    m_axis_data_tdata : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
+  );
+    END COMPONENT;
+    
+COMPONENT tuner_dds
+  PORT (
+    aclk : IN STD_LOGIC;
+    aresetn : IN STD_LOGIC;
+    s_axis_phase_tvalid : IN STD_LOGIC;
+    s_axis_phase_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    m_axis_data_tvalid : OUT STD_LOGIC;
     m_axis_data_tdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
   );
     END COMPONENT;
+    
+COMPONENT mixer
+  PORT (
+    aclk : IN STD_LOGIC;
+    s_axis_a_tvalid : IN STD_LOGIC;
+    s_axis_a_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    s_axis_b_tvalid : IN STD_LOGIC;
+    s_axis_b_tdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    m_axis_dout_tvalid : OUT STD_LOGIC;
+    m_axis_dout_tdata : OUT STD_LOGIC_VECTOR(47 DOWNTO 0) 
+  );
+END COMPONENT;
+
+COMPONENT fir_compiler_0
+  PORT (
+    aclk : IN STD_LOGIC;
+    s_axis_data_tvalid : IN STD_LOGIC;
+    s_axis_data_tready : OUT STD_LOGIC;
+    s_axis_data_tdata : IN STD_LOGIC_VECTOR(47 DOWNTO 0);
+    m_axis_data_tvalid : OUT STD_LOGIC;
+    m_axis_data_tdata : OUT STD_LOGIC_VECTOR(79 DOWNTO 0) 
+  );
+END COMPONENT;
+
+COMPONENT fir_compiler_1
+  PORT (
+    aclk : IN STD_LOGIC;
+    s_axis_data_tvalid : IN STD_LOGIC;
+    s_axis_data_tready : OUT STD_LOGIC;
+    s_axis_data_tdata : IN STD_LOGIC_VECTOR(79 DOWNTO 0);
+    m_axis_data_tvalid : OUT STD_LOGIC;
+    m_axis_data_tdata : OUT STD_LOGIC_VECTOR(47 DOWNTO 0) 
+  );
+END COMPONENT;
+
+	-- User Signals
+	-- AXIS
+	signal dds_reset : std_logic;
+    signal main_dds_tdata_small : std_logic_vector(15 downto 0);
+    signal main_dds_tdata : std_logic_vector(31 downto 0);
+    signal main_dds_tvalid : std_logic;
+    signal tuner_dds_tdata : std_logic_vector(31 downto 0);
+    signal tuner_dds_tvalid : std_logic;
+    signal mixer_tdata : std_logic_vector(47 downto 0);
+    signal mixer_tvalid : std_logic;
+    signal fir0_tdata : std_logic_vector(79 downto 0);
+    signal fir0_tvalid : std_logic;
+    signal fir1_tdata : std_logic_vector(47 downto 0);
+    signal fir1_tvalid : std_logic;
+    signal filter_out_tdata_scaled_l : std_logic_vector(15 downto 0);
+    signal filter_out_tdata_scaled_r : std_logic_vector(15 downto 0);
+    
+    -- Other-ish
+    signal clk_counter : std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
+    signal clk_counter_us : unsigned(C_S_AXI_DATA_WIDTH-1 downto 0);
+	-- User Signals end
 
 begin
 	-- I/O Connections assignments
@@ -367,11 +434,11 @@ begin
 	      when b"00" =>
 	        reg_data_out <= slv_reg0;
 	      when b"01" =>
-	        reg_data_out <= x"DEADBEEF";
+	        reg_data_out <= slv_reg1;
 	      when b"10" =>
 	        reg_data_out <= slv_reg2;
 	      when b"11" =>
-	        reg_data_out <= slv_reg3;
+	        reg_data_out <= clk_counter;
 	      when others =>
 	        reg_data_out  <= (others => '0');
 	    end case;
@@ -397,17 +464,82 @@ begin
 
 
 	-- Add user logic here
-
-your_instance_name : dds_compiler_0
+dds_reset <= not slv_reg3(0);
+main_dds_i : dds_compiler_0
   PORT MAP (
     aclk => s_axi_aclk,
-    aresetn => '1',
+    aresetn => dds_reset,
     s_axis_phase_tvalid => '1',
     s_axis_phase_tdata => slv_reg0,
-    m_axis_data_tvalid => m_axis_tvalid,
-    m_axis_data_tdata => m_axis_tdata
+    m_axis_data_tvalid => main_dds_tvalid,
+    m_axis_data_tdata => main_dds_tdata_small
+  );
+  main_dds_tdata <= (15 downto 0 => '0') & main_dds_tdata_small;
+
+tuner_dds_i : tuner_dds
+  PORT MAP (
+    aclk => s_axi_aclk,
+    aresetn => dds_reset,
+    s_axis_phase_tvalid => '1',
+    s_axis_phase_tdata => slv_reg1,
+    m_axis_data_tvalid => tuner_dds_tvalid,
+    m_axis_data_tdata => tuner_dds_tdata
   );
 
+mixer_i : mixer
+  PORT MAP (
+    aclk => s_axi_aclk,
+    s_axis_a_tvalid => tuner_dds_tvalid,
+    s_axis_a_tdata => tuner_dds_tdata,
+    s_axis_b_tvalid => main_dds_tvalid,
+    s_axis_b_tdata => main_dds_tdata,
+    m_axis_dout_tvalid => mixer_tvalid,
+    m_axis_dout_tdata => mixer_tdata
+  );
+
+fir0_i : fir_compiler_0
+  PORT MAP (
+    aclk => s_axi_aclk,
+    s_axis_data_tvalid => mixer_tvalid,
+    s_axis_data_tready => open,
+    s_axis_data_tdata => mixer_tdata,
+    m_axis_data_tvalid => fir0_tvalid,
+    m_axis_data_tdata => fir0_tdata
+  );
+  
+fir1_i : fir_compiler_1
+  PORT MAP (
+    aclk => s_axi_aclk,
+    s_axis_data_tvalid => fir0_tvalid,
+    s_axis_data_tready => open,
+    s_axis_data_tdata => fir0_tdata,
+    m_axis_data_tvalid => fir1_tvalid,
+    m_axis_data_tdata => fir1_tdata
+  );
+    -- trim 2 bits - we have slightly above unity gain so each fir compiler is allocating an extra bit
+    -- trim 3 more bits from complex multiplication
+    -- output data is 21 bits, but padded to 24 bits for AXIS iface
+    -- imaginary is upper, real is lower
+    -- l should be imaginary, r should be real
+    filter_out_tdata_scaled_l <= fir1_tdata(39 downto 24);
+    filter_out_tdata_scaled_r <= fir1_tdata(15 downto 0);
+
+    m_axis_tvalid <= fir1_tvalid;
+    -- dac data is right channel, left channel based on testing
+    m_axis_tdata <= filter_out_tdata_scaled_r & filter_out_tdata_scaled_l;
+    
+    -- clk counter
+    process (S_AXI_ACLK)
+	begin
+	  if rising_edge(S_AXI_ACLK) then 
+	    if S_AXI_ARESETN = '0' then
+	      clk_counter_us <= (others => '0');
+	    else
+	       clk_counter_us <= clk_counter_us + 1;
+	    end if;
+	  end if;                   
+	end process; 
+	clk_counter <= std_logic_vector(clk_counter_us);
 
 	-- User logic ends
 

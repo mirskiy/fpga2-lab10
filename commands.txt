@@ -1,0 +1,8 @@
+Linux commands:
+scp vivado/radio_periph_lab.runs/impl_1/design_1_wrapper.bit.bin zybo:
+/run/media/mmcblk0p1/config_codec.sh
+scp src/linux_software/example_prog.c zybo:
+fpgautil -b design_1_wrapper.bit.bin
+devmem 0x41200000 w 3
+devmem 0x41200008 w
+
