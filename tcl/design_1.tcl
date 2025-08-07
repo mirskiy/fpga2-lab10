@@ -613,15 +613,36 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets dds_compiler_0_M_AXIS_DATA] [get
 connect_bd_intf_net -intf_net [get_bd_intf_nets ps7_0_axi_periph_M00_AXI] [get_bd_intf_pins full_radio_0/S00_AXI] [get_bd_intf_pins system_ila_0/SLOT_1_AXI]
 
   # Create port connections
-  connect_bd_net -net lowlevel_dac_intfc_0_bclk [get_bd_pins lowlevel_dac_intfc_0/bclk] [get_bd_ports bclk]
-  connect_bd_net -net lowlevel_dac_intfc_0_lrck [get_bd_pins lowlevel_dac_intfc_0/lrck] [get_bd_ports lrck]
-  connect_bd_net -net lowlevel_dac_intfc_0_mclk [get_bd_pins lowlevel_dac_intfc_0/mclk] [get_bd_ports mclk]
-  connect_bd_net -net lowlevel_dac_intfc_0_sdata [get_bd_pins lowlevel_dac_intfc_0/sdata] [get_bd_ports sdata]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins ps7_0_axi_periph/ACLK] [get_bd_pins ps7_0_axi_periph/S00_ACLK] [get_bd_pins rst_ps7_0_125M/slowest_sync_clk]
-  connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_pins processing_system7_0/FCLK_RESET0_N] [get_bd_pins rst_ps7_0_125M/ext_reset_in]
-  connect_bd_net -net rst_ps7_0_125M_peripheral_aresetn [get_bd_pins rst_ps7_0_125M/peripheral_aresetn] [get_bd_pins ps7_0_axi_periph/ARESETN] [get_bd_pins ps7_0_axi_periph/S00_ARESETN] [get_bd_pins xpm_cdc_gen_0/src_rst]
-  connect_bd_net -net s00_axi_aclk_0_1 [get_bd_ports clk125] [get_bd_pins full_radio_0/s00_axi_aclk] [get_bd_pins lowlevel_dac_intfc_0/clk125] [get_bd_pins ps7_0_axi_periph/M00_ACLK] [get_bd_pins system_ila_0/clk] [get_bd_pins xpm_cdc_gen_0/dest_clk]
-  connect_bd_net -net xpm_cdc_gen_0_dest_rst_out [get_bd_pins xpm_cdc_gen_0/dest_rst_out] [get_bd_pins full_radio_0/s00_axi_aresetn] [get_bd_pins ps7_0_axi_periph/M00_ARESETN] [get_bd_pins system_ila_0/resetn] [get_bd_pins lowlevel_dac_intfc_0/resetn]
+  connect_bd_net -net lowlevel_dac_intfc_0_bclk  [get_bd_pins lowlevel_dac_intfc_0/bclk] \
+  [get_bd_ports bclk]
+  connect_bd_net -net lowlevel_dac_intfc_0_lrck  [get_bd_pins lowlevel_dac_intfc_0/lrck] \
+  [get_bd_ports lrck]
+  connect_bd_net -net lowlevel_dac_intfc_0_mclk  [get_bd_pins lowlevel_dac_intfc_0/mclk] \
+  [get_bd_ports mclk]
+  connect_bd_net -net lowlevel_dac_intfc_0_sdata  [get_bd_pins lowlevel_dac_intfc_0/sdata] \
+  [get_bd_ports sdata]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0  [get_bd_pins processing_system7_0/FCLK_CLK0] \
+  [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] \
+  [get_bd_pins ps7_0_axi_periph/ACLK] \
+  [get_bd_pins ps7_0_axi_periph/S00_ACLK] \
+  [get_bd_pins rst_ps7_0_125M/slowest_sync_clk]
+  connect_bd_net -net processing_system7_0_FCLK_RESET0_N  [get_bd_pins processing_system7_0/FCLK_RESET0_N] \
+  [get_bd_pins rst_ps7_0_125M/ext_reset_in]
+  connect_bd_net -net rst_ps7_0_125M_peripheral_aresetn  [get_bd_pins rst_ps7_0_125M/peripheral_aresetn] \
+  [get_bd_pins ps7_0_axi_periph/ARESETN] \
+  [get_bd_pins ps7_0_axi_periph/S00_ARESETN] \
+  [get_bd_pins xpm_cdc_gen_0/src_rst]
+  connect_bd_net -net s00_axi_aclk_0_1  [get_bd_ports clk125] \
+  [get_bd_pins full_radio_0/s00_axi_aclk] \
+  [get_bd_pins lowlevel_dac_intfc_0/clk125] \
+  [get_bd_pins ps7_0_axi_periph/M00_ACLK] \
+  [get_bd_pins system_ila_0/clk] \
+  [get_bd_pins xpm_cdc_gen_0/dest_clk]
+  connect_bd_net -net xpm_cdc_gen_0_dest_rst_out  [get_bd_pins xpm_cdc_gen_0/dest_rst_out] \
+  [get_bd_pins full_radio_0/s00_axi_aresetn] \
+  [get_bd_pins ps7_0_axi_periph/M00_ARESETN] \
+  [get_bd_pins system_ila_0/resetn] \
+  [get_bd_pins lowlevel_dac_intfc_0/resetn]
 
   # Create address segments
   assign_bd_address -offset 0x43C00000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs full_radio_0/S00_AXI/S00_AXI_reg] -force
