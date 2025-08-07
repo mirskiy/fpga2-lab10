@@ -1,8 +1,24 @@
 Linux commands:
+ip addr add 192.168.1.2/24 dev eth0
 scp vivado/radio_periph_lab.runs/impl_1/design_1_wrapper.bit.bin zybo:
 /run/media/mmcblk0p1/config_codec.sh
 scp src/linux_software/example_prog.c zybo:
+scp src/linux_software/test_fifo.c zybo:
 fpgautil -b design_1_wrapper.bit.bin
 devmem 0x41200000 w 3
-devmem 0x41200008 w
 
+radio
+#fake adc
+devmem 0x43c00000 w 11000
+#tuner
+devmem 0x43c00004 w 10000
+#control (not reset)
+devmem 0x43c0000c w 0
+#Get counter
+devmem 0x43c0000c w
+
+FIFO:
+Get Length
+devmem 0x43C10024 w
+Read
+devmem 0x43C10020 w
