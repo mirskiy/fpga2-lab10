@@ -464,7 +464,7 @@ begin
 
 
 	-- Add user logic here
-dds_reset <= not slv_reg3(0);
+dds_reset <= not slv_reg2(0);
 main_dds_i : dds_compiler_0
   PORT MAP (
     aclk => s_axi_aclk,
@@ -524,7 +524,7 @@ fir1_i : fir_compiler_1
     filter_out_tdata_scaled_l <= fir1_tdata(39 downto 24);
     filter_out_tdata_scaled_r <= fir1_tdata(15 downto 0);
 
-    m_axis_tvalid <= fir1_tvalid;
+    m_axis_tvalid <= fir1_tvalid and slv_reg2(4);
     -- dac data is right channel, left channel based on testing
     m_axis_tdata <= filter_out_tdata_scaled_r & filter_out_tdata_scaled_l;
     

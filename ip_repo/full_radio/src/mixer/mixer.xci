@@ -2,6 +2,7 @@
   "schema": "xilinx.com:schema:json_instance:1.0",
   "ip_inst": {
     "xci_name": "mixer",
+    "cell_name": "full_radio_v1_0_S00_AXI_inst/mixer_i",
     "component_reference": "xilinx.com:ip:cmpy:6.0",
     "ip_revision": "25",
     "gen_directory": "../../../../vivado/radio_periph_lab.tmp/full_radio_v1_0_project/full_radio_v1_0_project.gen/sources_1/ip/mixer",
