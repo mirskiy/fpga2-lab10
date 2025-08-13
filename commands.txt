@@ -13,7 +13,9 @@ devmem 0x43c00000 w 11000
 #tuner
 devmem 0x43c00004 w 10000
 #control (not reset)
-devmem 0x43c0000c w 0
+devmem 0x43c00008 w 0
+#control (enable streaming)
+devmem 0x43c00008 w 0x10
 #Get counter
 devmem 0x43c0000c w
 
