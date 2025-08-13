@@ -89,13 +89,12 @@ void radio_setAdcFreq(volatile unsigned int* ptrToRadio, float freq)
 // Get Packet
 void radio_getPacket(volatile unsigned int *fifo, uint32_t *buffer)
 {
-    printf("Starting to receive data\n");
     unsigned int available;
 
     // Check if we have enough data to receive. RLR (length) is in bytes!
     while ( (available = fifo_getLength(fifo)) < BYTES_PER_PACKET)
     { /* printf("Not enough, %u\n", available); */ continue; }
-    printf("%u available\n", available);
+    //printf("%u available\n", available);
 
     // Receive
     for (int i=0; i<WORDS_PER_PACKET; i++)
@@ -103,7 +102,7 @@ void radio_getPacket(volatile unsigned int *fifo, uint32_t *buffer)
         buffer[i] = fifo_getData(fifo);
     }
 
-    printf("Got enough data for a packet. Last byte: %u\n", buffer[WORDS_PER_PACKET]);
+    //printf("Got enough data for a packet. Last byte: %u\n", buffer[WORDS_PER_PACKET]);
 }
 
 
@@ -172,10 +171,11 @@ int main(int argc, char **argv) {
     memset(buffer, 55, buffer_size);  // For debugging
 
     *counter = 0;
+    printf("Starting to receive data\n");
     while (1) {
-        (*counter)++;
         radio_getPacket(fifo, data);
         udp_sendPacket(sockfd, &serveraddr, buffer, buffer_size);
+        (*counter)++;
     }
 
     return 0;
