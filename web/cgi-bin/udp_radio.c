@@ -31,7 +31,6 @@
 // Config
 #define WORDS_PER_PACKET 256
 #define BYTES_PER_PACKET WORDS_PER_PACKET*4
-#define COUNTER_BYTES 4
 
 // ***** ***** Utility ***** *****
 // *****
@@ -125,10 +124,10 @@ void udp_fillServeraddr(struct sockaddr_in *serveraddr_p, char *addr) {
 
 // Send Packet
 void udp_sendPacket(int sockfd, const struct sockaddr *serveraddr_p,
-                    unsigned int *buffer, size_t buffer_size ) {
+                    unsigned int *buffer, size_t bytes_to_send ) {
     int serverlen = sizeof(*serveraddr_p);
     int res; 
-    res = sendto(sockfd, buffer, buffer_size, 0, serveraddr_p, serverlen);
+    res = sendto(sockfd, buffer, bytes_to_send, 0, serveraddr_p, serverlen);
     if (res < 0) 
       error("ERROR in sendto");
     return;
@@ -147,6 +146,7 @@ char *main_checkArgs(int argc, char **argv){
 }
 
 int main(int argc, char **argv) {
+    setvbuf(stdout, NULL, _IOLBF, 0);
     printf("\r\n\r\n\r\nLab 10 Daniel Mirsky - FIFO Test\n\r");
     // Input
     char *addr = main_checkArgs(argc, argv);
@@ -164,17 +164,18 @@ int main(int argc, char **argv) {
     radio_setAdcFreq(radio, 30.001e6);
 
     // Data Setup
-    size_t buffer_size = BYTES_PER_PACKET + COUNTER_BYTES;
-    uint32_t buffer[buffer_size];
+    int buffer_words = WORDS_PER_PACKET + 1; // +1 for counter
+    size_t buffer_bytes = buffer_words * 4;
+    uint32_t buffer[buffer_words];
     uint32_t *const counter = &buffer[0];
-    uint32_t *const data = &buffer[4];
-    memset(buffer, 55, buffer_size);  // For debugging
+    uint32_t *const data = &buffer[1];
+    memset(buffer, 0x55, buffer_bytes);  // For debugging
 
     *counter = 0;
     printf("Starting to receive data\n");
     while (1) {
         radio_getPacket(fifo, data);
-        udp_sendPacket(sockfd, &serveraddr, buffer, buffer_size);
+        udp_sendPacket(sockfd, &serveraddr, buffer, buffer_bytes);
         (*counter)++;
     }
 
