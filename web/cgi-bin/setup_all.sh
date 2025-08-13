@@ -8,5 +8,6 @@ echo "</p></em><p>"
 echo "configuring Codec...<br>"
 ./configure_codec.sh
 echo "</p>"
-echo "you would start your UDP Streamer Program Here...<br>"
+echo "starting my UDP Streamer Program Here...<br>"
+./udp_radio 192.168.1.3
 echo "<p><em>All Done!</em></p>" 

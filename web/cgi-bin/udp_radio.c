@@ -116,58 +116,45 @@ int udp_getSocket() {
     return sockfd;
 }
 // Setup serveraddr
-void udp_fillServeraddr(const struct sockaddr *serveraddr_p, char *addr) {
+void udp_fillServeraddr(struct sockaddr_in *serveraddr_p, char *addr) {
     /* build the server's Internet address */
     bzero((char *) serveraddr_p, sizeof(*serveraddr_p));
-    serveraddr.sin_family = AF_INET;
-    serveraddr.sin_addr.s_addr = inet_addr(addr);
-    serveraddr.sin_port = htons(PORT);
+    serveraddr_p->sin_family = AF_INET;
+    serveraddr_p->sin_addr.s_addr = inet_addr(addr);
+    serveraddr_p->sin_port = htons(PORT);
 }
 
 // Send Packet
 void udp_sendPacket(int sockfd, const struct sockaddr *serveraddr_p,
-                    unsigned int *buffer, size_t buffer_size )
+                    unsigned int *buffer, size_t buffer_size ) {
     int serverlen = sizeof(*serveraddr_p);
     int res; 
     res = sendto(sockfd, buffer, buffer_size, 0, serveraddr_p, serverlen);
     if (res < 0) 
       error("ERROR in sendto");
     return;
-
-    // Original code
-    for (uint32_t i=0; i<count; i++) {
-        *counter = i;
-        for (uint32_t j=0; j<DATASIZE; j++)
-        { data[j] = i*DATASIZE+j; }
-        //*counter = 1;
-        //data[0] = 0x11111111;
-        //data[1] = 0x22222222;
-        //printf("%x %x %x %x", data, data+1, &(data[0]), &(data[1]));
-        res = sendto(sockfd, buf, BUFSIZE, 0, serveraddr_p, serverlen);
-        if (res < 0) 
-          error("ERROR in sendto");
-    }
 }
 
 
 // ***** ***** Main ***** *****
 // args
-char *checkArgs(int argc, char **argv){
+char *main_checkArgs(int argc, char **argv){
     if (argc != 2) {
         fprintf(stderr, "usage: %s <hostname>\n", argv[0]);
         exit(0);
     }
-    addr = argv[1];
+    char *addr = argv[1];
+    return addr;
 }
 
 int main(int argc, char **argv) {
     printf("\r\n\r\n\r\nLab 10 Daniel Mirsky - FIFO Test\n\r");
     // Input
-    char *addr = main_checkArgs(int argc, char **argv);
+    char *addr = main_checkArgs(argc, argv);
 
     // UDP Setup: Socket and server info
     struct sockaddr_in serveraddr;
-    udp_fillServeraddr(&serveraddr, addr)
+    udp_fillServeraddr(&serveraddr, addr);
     int sockfd = udp_getSocket();
 
     // Radio Seetup
@@ -181,12 +168,14 @@ int main(int argc, char **argv) {
     size_t buffer_size = BYTES_PER_PACKET + COUNTER_BYTES;
     uint32_t buffer[buffer_size];
     uint32_t *const counter = &buffer[0];
-    uint32_t *data = &buf[4];
-    memset(buf, 55, buffer_size);  // For debugging
+    uint32_t *const data = &buffer[4];
+    memset(buffer, 55, buffer_size);  // For debugging
 
+    *counter = 0;
     while (1) {
-        radio_getPacket(data);
-        udp_sendPacket(buffer);
+        (*counter)++;
+        radio_getPacket(fifo, data);
+        udp_sendPacket(sockfd, &serveraddr, buffer, buffer_size);
     }
 
     return 0;
