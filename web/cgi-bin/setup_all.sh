@@ -15,14 +15,21 @@ echo "compiling udpsender<br>"
 echo "<pre>" && gcc udpsender.c -o udpsender 2>&1 && echo "</pre><br>"
 echo "<br>"
 
+echo "killing udp_radio in case it's running<br>"
+echo "<pre>" && pgrep udp_radio | xargs kill && echo "</pre><br>"
+
 echo "loading PL...<br>"
 fpgautil -b design_1_wrapper.bit.bin
 echo "</p></em><p>"
 echo "configuring Codec...<br>"
 ./configure_codec.sh
 echo "</p>"
+
 echo "Starting my UDP Streamer Program Here...<br>"
-./udp_radio 192.168.1.3 > ../udp_radio_log &
+echo "Getting IP Address from ../ip_address"
+ip=$(cat ../ip_address | head -n 1)
+echo "Sending data to $ip"
+./udp_radio $ip > ../udp_radio_log &
 echo "log <a href='/udp_radio_log'>here</a><br>"
 echo "Started UDP Streamer<br>"
 echo "<p><em>All Done!</em></p>" 
