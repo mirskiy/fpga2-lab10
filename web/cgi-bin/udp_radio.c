@@ -1,0 +1,193 @@
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/mman.h> 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h> 
+#include <arpa/inet.h>
+#include <fcntl.h> 
+#define _BSD_SOURCE
+
+// UDP (Based on https://www.cs.cmu.edu/afs/cs/academic/class/15213-f99/www/class26/udpclient.c)
+#define PORT 25344
+
+// Radio
+#define RADIO_TUNER_FAKE_ADC_PINC_OFFSET 0
+#define RADIO_TUNER_TUNER_PINC_OFFSET 1
+#define RADIO_TUNER_CONTROL_REG_OFFSET 2
+#define RADIO_TUNER_TIMER_REG_OFFSET 3
+#define RADIO_PERIPH_ADDRESS 0x43c00000
+
+// FIFO
+// Divide by 4 because ptr is 4byte
+#define FIFO_LEN_OFFSET 0x24/4
+#define FIFO_READ_OFFSET 0x20/4
+#define FIFO_PERIPH_ADDRESS 0x43c10000
+
+// Config
+#define WORDS_PER_PACKET 256
+#define BYTES_PER_PACKET WORDS_PER_PACKET*4
+#define COUNTER_BYTES 4
+
+// ***** ***** Utility ***** *****
+// *****
+// Print Errors
+void error(char *msg) {
+    perror(msg);
+    exit(0);
+}
+
+// Pointer to mem for interfaces
+volatile unsigned int * get_a_pointer(unsigned int phys_addr)
+{
+	int mem_fd = open("/dev/mem", O_RDWR | O_SYNC); 
+	void *map_base = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, phys_addr); 
+	return (volatile unsigned int *)map_base; 
+}
+
+
+// ***** ***** FIFO ***** *****
+// *****
+// Get FIFO Length
+unsigned int fifo_getLength(volatile unsigned int *fifo)
+{
+	unsigned int len = *(fifo+FIFO_LEN_OFFSET);
+    // RLR is lower 23 bits
+    len = len & 0x7FFFFF;
+    return len;
+}
+
+// Read FIFO
+uint32_t fifo_getData(volatile unsigned int *fifo)
+{
+	unsigned int data = *(fifo+FIFO_READ_OFFSET);
+    return data;
+}
+
+// ***** ***** Radio ***** *****
+// *****
+// Tune Radio
+void radio_tuneRadio(volatile unsigned int *ptrToRadio, float tune_frequency)
+{
+    printf("Tuning Radio to %fHz\n\r", tune_frequency);
+	float pinc = (-1.0*tune_frequency)*(float)(1<<27)/125.0e6;
+	*(ptrToRadio+RADIO_TUNER_TUNER_PINC_OFFSET)=(int)pinc;
+}
+
+// Tune ADC
+void radio_setAdcFreq(volatile unsigned int* ptrToRadio, float freq)
+{
+    printf("Tuning ADC to %fHz\n\r", freq);
+	float pinc = freq*(float)(1<<27)/125.0e6;
+	*(ptrToRadio+RADIO_TUNER_FAKE_ADC_PINC_OFFSET) = (int)pinc;
+}
+
+// Get Packet
+void radio_getPacket(volatile unsigned int *fifo, uint32_t *buffer)
+{
+    printf("Starting to receive data\n");
+    unsigned int available;
+
+    // Check if we have enough data to receive. RLR (length) is in bytes!
+    while ( (available = fifo_getLength(fifo)) < BYTES_PER_PACKET)
+    { /* printf("Not enough, %u\n", available); */ continue; }
+    printf("%u available\n", available);
+
+    // Receive
+    for (int i=0; i<WORDS_PER_PACKET; i++)
+    {
+        buffer[i] = fifo_getData(fifo);
+    }
+
+    printf("Got enough data for a packet. Last byte: %u\n", buffer[WORDS_PER_PACKET]);
+}
+
+
+// ***** ***** UDP ***** *****
+// Setup socket
+int udp_getSocket() {
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) 
+        error("ERROR opening socket");
+    return sockfd;
+}
+// Setup serveraddr
+void udp_fillServeraddr(const struct sockaddr *serveraddr_p, char *addr) {
+    /* build the server's Internet address */
+    bzero((char *) serveraddr_p, sizeof(*serveraddr_p));
+    serveraddr.sin_family = AF_INET;
+    serveraddr.sin_addr.s_addr = inet_addr(addr);
+    serveraddr.sin_port = htons(PORT);
+}
+
+// Send Packet
+void udp_sendPacket(int sockfd, const struct sockaddr *serveraddr_p,
+                    unsigned int *buffer, size_t buffer_size )
+    int serverlen = sizeof(*serveraddr_p);
+    int res; 
+    res = sendto(sockfd, buffer, buffer_size, 0, serveraddr_p, serverlen);
+    if (res < 0) 
+      error("ERROR in sendto");
+    return;
+
+    // Original code
+    for (uint32_t i=0; i<count; i++) {
+        *counter = i;
+        for (uint32_t j=0; j<DATASIZE; j++)
+        { data[j] = i*DATASIZE+j; }
+        //*counter = 1;
+        //data[0] = 0x11111111;
+        //data[1] = 0x22222222;
+        //printf("%x %x %x %x", data, data+1, &(data[0]), &(data[1]));
+        res = sendto(sockfd, buf, BUFSIZE, 0, serveraddr_p, serverlen);
+        if (res < 0) 
+          error("ERROR in sendto");
+    }
+}
+
+
+// ***** ***** Main ***** *****
+// args
+char *checkArgs(int argc, char **argv){
+    if (argc != 2) {
+        fprintf(stderr, "usage: %s <hostname>\n", argv[0]);
+        exit(0);
+    }
+    addr = argv[1];
+}
+
+int main(int argc, char **argv) {
+    printf("\r\n\r\n\r\nLab 10 Daniel Mirsky - FIFO Test\n\r");
+    // Input
+    char *addr = main_checkArgs(int argc, char **argv);
+
+    // UDP Setup: Socket and server info
+    struct sockaddr_in serveraddr;
+    udp_fillServeraddr(&serveraddr, addr)
+    int sockfd = udp_getSocket();
+
+    // Radio Seetup
+    volatile unsigned int *radio = get_a_pointer(RADIO_PERIPH_ADDRESS);	
+    volatile unsigned int *fifo = get_a_pointer(FIFO_PERIPH_ADDRESS);
+    *(radio+RADIO_TUNER_CONTROL_REG_OFFSET) = 0; // make sure radio isn't in reset
+    radio_tuneRadio(radio,  30e6);
+    radio_setAdcFreq(radio, 30.001e6);
+
+    // Data Setup
+    size_t buffer_size = BYTES_PER_PACKET + COUNTER_BYTES;
+    uint32_t buffer[buffer_size];
+    uint32_t *const counter = &buffer[0];
+    uint32_t *data = &buf[4];
+    memset(buf, 55, buffer_size);  // For debugging
+
+    while (1) {
+        radio_getPacket(data);
+        udp_sendPacket(buffer);
+    }
+
+    return 0;
+}
